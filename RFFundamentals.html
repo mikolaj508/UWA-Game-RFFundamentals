@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RF LAB — Trener UniFi</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#0a0d0c;
+  --chassis:#121715;
+  --chassis-edge:#1e2622;
+  --panel:#0d1210;
+  --screen:#050b09;
+  --grid: rgba(77,255,154,0.08);
+  --phosphor:#4dff9a;
+  --phosphor-dim: rgba(77,255,154,0.35);
+  --amber:#ffb020;
+  --cyan:#5dd8ff;
+  --danger:#ff5c5c;
+  --text:#d9e6de;
+  --text-dim:#7c9088;
+  --text-faint:#4d5c56;
+  --border:#233129;
+  --border-soft:#182420;
+  --font-display:'Space Grotesk', sans-serif;
+  --font-mono:'IBM Plex Mono', monospace;
+  --font-body:'IBM Plex Sans', sans-serif;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(ellipse at 20% -10%, rgba(77,255,154,0.05), transparent 45%),
+    linear-gradient(180deg, #0d1110, #070908 60%);
+  color:var(--text);
+  font-family:var(--font-body);
+  min-height:100vh;
+  padding:20px 14px 60px;
+}
+
+.chassis{
+  max-width:1000px;
+  margin:0 auto;
+  background:linear-gradient(180deg, var(--chassis), #0c0f0d);
+  border:1px solid var(--chassis-edge);
+  border-radius:10px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 20px 50px rgba(0,0,0,0.5);
+  overflow:hidden;
+}
+
+.rack-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:18px 22px;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  flex-wrap:wrap;
+}
+.brand{
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+}
+.brand .led{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--phosphor);
+  box-shadow:0 0 6px var(--phosphor), 0 0 2px var(--phosphor);
+  display:inline-block;
+  animation: blink 3.2s ease-in-out infinite;
+}
+@keyframes blink{ 0%,85%,100%{opacity:1;} 90%{opacity:0.25;} }
+.brand h1{
+  font-family:var(--font-display);
+  font-size:20px;
+  letter-spacing:0.02em;
+  margin:0;
+  font-weight:700;
+  color:#eafff2;
+}
+.brand span.sub{
+  font-family:var(--font-mono);
+  font-size:11px;
+  color:var(--text-dim);
+  letter-spacing:0.08em;
+}
+
+.tabs{
+  display:flex;
+  gap:6px;
+  padding:10px 16px;
+  background:var(--screen);
+  border-bottom:1px solid var(--border);
+  overflow-x:auto;
+}
+.tab-btn{
+  font-family:var(--font-mono);
+  font-size:11px;
+  letter-spacing:0.06em;
+  color:var(--text-dim);
+  background:var(--panel);
+  border:1px solid var(--border-soft);
+  border-radius:4px;
+  padding:9px 14px;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:color .15s, border-color .15s, background .15s;
+}
+.tab-btn:hover{ color:var(--text); border-color:var(--border); }
+.tab-btn.active{
+  color:#04140b;
+  background:var(--phosphor);
+  border-color:var(--phosphor);
+  font-weight:600;
+}
+
+main{ padding:20px 22px 26px; }
+
+.module{ display:none; }
+.module.active{ display:block; animation: fade .25s ease; }
+@keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+.mod-title{
+  font-family:var(--font-display);
+  font-size:16px;
+  font-weight:600;
+  color:#eafff2;
+  margin:0 0 4px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.mod-title .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 6px var(--cyan);}
+.mod-desc{
+  font-size:13px;
+  color:var(--text-dim);
+  margin:0 0 18px;
+  line-height:1.55;
+  max-width:640px;
+}
+
+.screen{
+  background:var(--screen);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:14px;
+  position:relative;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+}
+.screen canvas{ display:block; width:100%; height:220px; }
+
+.readout-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+.readout{
+  flex:1;
+  min-width:120px;
+  background:var(--panel);
+  border:1px solid var(--border-soft);
+  border-radius:5px;
+  padding:9px 12px;
+}
+.readout .label{
+  font-size:10px;
+  letter-spacing:0.08em;
+  color:var(--text-faint);
+  text-transform:uppercase;
+  margin-bottom:3px;
+}
+.readout .value{
+  font-family:var(--font-mono);
+  font-size:17px;
+  color:var(--phosphor);
+  font-weight:600;
+}
+.readout .value.amber{ color:var(--amber); }
+.readout .value.cyan{ color:var(--cyan); }
+.readout .value.danger{ color:var(--danger); }
+
+.controls{
+  margin-top:16px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+  gap:14px;
+}
+.control{
+  background:var(--panel);
+  border:1px solid var(--border-soft);
+  border-radius:6px;
+  padding:11px 14px;
+}
+.control-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  margin-bottom:8px;
+}
+.control-head .name{
+  font-size:12px;
+  color:var(--text);
+  font-weight:500;
+}
+.control-head .val{
+  font-family:var(--font-mono);
+  font-size:12px;
+  color:var(--cyan);
+}
+input[type=range]{
+  width:100%;
+  -webkit-appearance:none;
+  height:4px;
+  background:var(--border);
+  border-radius:2px;
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:15px;height:15px;
+  border-radius:50%;
+  background:var(--phosphor);
+  box-shadow:0 0 6px rgba(77,255,154,0.6);
+  cursor:pointer;
+  margin-top:-1px;
+}
+input[type=range]::-moz-range-thumb{
+  width:15px;height:15px;border:none;border-radius:50%;
+  background:var(--phosphor);cursor:pointer;
+}
+.checkbox-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  color:var(--text);
+  cursor:pointer;
+  user-select:none;
+}
+.checkbox-row input{ accent-color:var(--phosphor); width:14px; height:14px; }
+
+.pillbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:14px;
+}
+.pill{
+  font-family:var(--font-mono);
+  font-size:11px;
+  padding:7px 12px;
+  border-radius:20px;
+  border:1px solid var(--border);
+  background:var(--panel);
+  color:var(--text-dim);
+  cursor:pointer;
+  transition:all .15s;
+}
+.pill:hover{ border-color:var(--phosphor); color:var(--phosphor); }
+.pill.active{ background:var(--phosphor); color:#04140b; border-color:var(--phosphor); font-weight:600; }
+
+.info-card{
+  margin-top:16px;
+  background:linear-gradient(180deg, rgba(77,255,154,0.05), transparent);
+  border:1px solid var(--border);
+  border-left:2px solid var(--phosphor);
+  border-radius:0 6px 6px 0;
+  padding:12px 15px;
+  font-size:12.5px;
+  color:var(--text);
+  line-height:1.6;
+}
+.info-card b{ color:var(--phosphor); font-weight:600; }
+.info-card.amber{ border-left-color:var(--amber); background:linear-gradient(180deg, rgba(255,176,32,0.06), transparent); }
+.info-card.amber b{ color:var(--amber); }
+.info-card.danger{ border-left-color:var(--danger); background:linear-gradient(180deg, rgba(255,92,92,0.06), transparent); }
+.info-card.danger b{ color:var(--danger); }
+
+.band-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.band-card{
+  border:1px solid var(--border-soft);
+  background:var(--panel);
+  border-radius:6px;
+  padding:12px;
+  cursor:pointer;
+  transition:border-color .15s;
+}
+.band-card.active{ border-color:var(--cyan); }
+.band-card .bfreq{ font-family:var(--font-mono); color:var(--cyan); font-size:15px; font-weight:600; }
+.band-card .bname{ font-size:11px; color:var(--text-dim); margin-top:2px; }
+.band-card .bbar{ height:5px; border-radius:3px; background:var(--border); margin-top:8px; overflow:hidden; }
+.band-card .bbar i{ display:block; height:100%; background:var(--cyan); }
+.band-card .blabel{ font-size:10px; color:var(--text-faint); margin-top:4px; }
+
+.spectrum-bar{
+  position:relative;
+  height:64px;
+  border-radius:5px;
+  overflow:hidden;
+  display:flex;
+  border:1px solid var(--border);
+}
+.zone{
+  position:relative;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:var(--font-mono);
+  font-size:10px;
+  color:rgba(255,255,255,0.75);
+  letter-spacing:0.03em;
+  border-right:1px solid rgba(0,0,0,0.4);
+}
+.spectrum-cursor{
+  position:absolute;
+  top:-6px;
+  width:2px;
+  height:76px;
+  background:#fff;
+  box-shadow:0 0 8px #fff, 0 0 14px var(--phosphor);
+  transform:translateX(-1px);
+  pointer-events:none;
+}
+.spectrum-cursor::after{
+  content:'';
+  position:absolute;
+  top:-6px; left:-5px;
+  width:12px;height:12px;
+  background:#fff;
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+.ion-divider{
+  position:absolute;
+  top:0; bottom:0;
+  width:0;
+  border-left:1px dashed rgba(255,255,255,0.4);
+  pointer-events:none;
+}
+.ion-label{
+  display:flex;
+  justify-content:space-between;
+  font-family:var(--font-mono);
+  font-size:10px;
+  color:var(--text-faint);
+  margin-top:5px;
+  letter-spacing:0.05em;
+}
+
+.presetbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:14px;
+}
+.preset{
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  padding:7px 11px;
+  border-radius:5px;
+  border:1px solid var(--border-soft);
+  background:var(--panel);
+  color:var(--text-dim);
+  cursor:pointer;
+}
+.preset:hover{ border-color:var(--cyan); color:var(--cyan); }
+
+.gauge-wrap{ margin-top:8px; }
+.gauge-track{
+  position:relative;
+  height:10px;
+  background:linear-gradient(90deg, var(--danger) 0%, var(--amber) 30%, var(--phosphor) 55%, var(--cyan) 100%);
+  border-radius:6px;
+  opacity:0.85;
+}
+.gauge-marks{ position:relative; height:26px; }
+.gauge-mark{
+  position:absolute;
+  top:0;
+  width:1px;
+  height:8px;
+  background:var(--text-faint);
+}
+.gauge-mark .mlabel{
+  position:absolute;
+  top:10px;
+  left:50%;
+  transform:translateX(-50%);
+  font-family:var(--font-mono);
+  font-size:9px;
+  color:var(--text-faint);
+  white-space:nowrap;
+}
+.gauge-cursor{
+  position:absolute;
+  top:-14px;
+  width:0;height:0;
+  border-left:6px solid transparent;
+  border-right:6px solid transparent;
+  border-top:9px solid #fff;
+  transform:translateX(-6px);
+  filter: drop-shadow(0 0 4px #fff);
+}
+
+.ref-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:14px;
+}
+.ref-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px 12px;
+  background:var(--panel);
+  border:1px solid var(--border-soft);
+  border-radius:5px;
+  cursor:pointer;
+  font-size:12px;
+}
+.ref-item:hover{ border-color:var(--cyan); }
+.ref-item .rname{ color:var(--text); }
+.ref-item .rval{ font-family:var(--font-mono); color:var(--cyan); }
+
+.big-readout{
+  display:flex;
+  gap:14px;
+  align-items:flex-end;
+  margin-top:14px;
+  flex-wrap:wrap;
+}
+.big-readout .dbm{
+  font-family:var(--font-mono);
+  font-size:44px;
+  font-weight:600;
+  color:var(--phosphor);
+  line-height:1;
+}
+.big-readout .mw{
+  font-family:var(--font-mono);
+  font-size:20px;
+  color:var(--cyan);
+  padding-bottom:5px;
+}
+.arrow-eq{ color:var(--text-faint); font-size:20px; padding-bottom:5px; }
+
+.delta-row{ display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+.delta-btn{
+  font-family:var(--font-mono);
+  font-size:13px;
+  font-weight:600;
+  padding:10px 16px;
+  border-radius:5px;
+  border:1px solid var(--border-soft);
+  background:var(--panel);
+  color:var(--text);
+  cursor:pointer;
+}
+.delta-btn.up{ color:var(--phosphor); }
+.delta-btn.down{ color:var(--danger); }
+.delta-btn:hover{ border-color:currentColor; }
+
+.quiz-progress{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+  font-family:var(--font-mono);
+  font-size:11px;
+  color:var(--text-dim);
+}
+.quiz-score{ color:var(--phosphor); }
+.quiz-card{
+  background:var(--panel);
+  border:1px solid var(--border-soft);
+  border-radius:8px;
+  padding:20px;
+}
+.quiz-q{
+  font-size:15px;
+  color:var(--text);
+  line-height:1.55;
+  margin:0 0 16px;
+}
+.quiz-opts{ display:flex; flex-direction:column; gap:8px; }
+.quiz-opt{
+  text-align:left;
+  padding:12px 14px;
+  border-radius:6px;
+  border:1px solid var(--border-soft);
+  background:var(--screen);
+  color:var(--text);
+  font-size:13px;
+  cursor:pointer;
+  font-family:var(--font-body);
+}
+.quiz-opt:hover{ border-color:var(--cyan); }
+.quiz-opt.correct{ border-color:var(--phosphor); background:rgba(77,255,154,0.08); color:var(--phosphor); }
+.quiz-opt.wrong{ border-color:var(--danger); background:rgba(255,92,92,0.08); color:var(--danger); }
+.quiz-opt:disabled{ cursor:default; }
+.quiz-explain{
+  margin-top:14px;
+  padding:12px 14px;
+  background:var(--screen);
+  border-radius:6px;
+  border-left:2px solid var(--cyan);
+  font-size:12.5px;
+  color:var(--text-dim);
+  line-height:1.6;
+  display:none;
+}
+.quiz-explain.show{ display:block; }
+.quiz-next{
+  margin-top:14px;
+  font-family:var(--font-mono);
+  font-size:12px;
+  padding:10px 18px;
+  border-radius:5px;
+  border:1px solid var(--phosphor);
+  background:transparent;
+  color:var(--phosphor);
+  cursor:pointer;
+  display:none;
+}
+.quiz-next.show{ display:inline-block; }
+.quiz-done{ text-align:center; padding:20px 0; }
+.quiz-done .score-big{ font-family:var(--font-mono); font-size:40px; color:var(--phosphor); }
+.quiz-restart{
+  margin-top:14px;
+  font-family:var(--font-mono);
+  font-size:12px;
+  padding:10px 18px;
+  border-radius:5px;
+  border:1px solid var(--border);
+  background:var(--panel);
+  color:var(--text);
+  cursor:pointer;
+}
+
+footer.foot{
+  text-align:center;
+  padding:14px;
+  font-family:var(--font-mono);
+  font-size:10px;
+  color:var(--text-faint);
+  letter-spacing:0.05em;
+}
+
+@media (max-width:560px){
+  .brand h1{ font-size:16px; }
+  .screen canvas{ height:170px; }
+  .big-readout .dbm{ font-size:34px; }
+}
+</style>
+</head>
+<body>
+
+<div class="chassis">
+  <div class="rack-header">
+    <div class="brand">
+      <span class="led"></span>
+      <h1>RF LAB</h1>
+      <span class="sub">UWA · TRENER SIECI UNIFI</span>
+    </div>
+    <span class="sub" style="font-family:var(--font-mono); font-size:11px; color:var(--text-faint);">MODUŁ: FIZYKA → PRAKTYKA</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="wave">01 · GENERATOR FALI</button>
+    <button class="tab-btn" data-tab="spectrum">02 · ANALIZATOR WIDMA</button>
+    <button class="tab-btn" data-tab="power">03 · MIERNIK MOCY (dBm)</button>
+    <button class="tab-btn" data-tab="quiz">04 · MISJE</button>
+  </div>
+
+  <main>
+
+    <!-- MODULE 1: WAVE GENERATOR -->
+    <section class="module active" id="tab-wave">
+      <h2 class="mod-title"><span class="dot"></span>Generator fali</h2>
+      <p class="mod-desc">Zmieniaj częstotliwość i patrz, co dzieje się z długością fali (λ) — to jest żywy dowód wzoru <b style="color:var(--phosphor)">f = c/λ</b>. Włącz „falę odbitą”, żeby zobaczyć multipath fading — czyli dlaczego martwe strefy WiFi potrafią się pojawiać w dziwnych miejscach.</p>
+
+      <div class="screen">
+        <canvas id="waveCanvas"></canvas>
+      </div>
+
+      <div class="readout-row">
+        <div class="readout"><div class="label">Częstotliwość f</div><div class="value" id="waveFreqOut">2.0 Hz</div></div>
+        <div class="readout"><div class="label">Długość fali λ (relatywnie)</div><div class="value cyan" id="waveLambdaOut">0.50</div></div>
+        <div class="readout"><div class="label">Suma amplitud (piki)</div><div class="value amber" id="waveSumOut">—</div></div>
+      </div>
+
+      <div class="controls">
+        <div class="control">
+          <div class="control-head"><span class="name">Częstotliwość (cykle / 1 s okna)</span><span class="val" id="freqVal">2.0 Hz</span></div>
+          <input type="range" id="freqSlider" min="1" max="10" step="0.1" value="2">
+        </div>
+        <div class="control">
+          <div class="control-head"><span class="name">Amplituda sygnału A</span><span class="val" id="ampVal">1.0</span></div>
+          <input type="range" id="ampSlider" min="0.2" max="1" step="0.05" value="1">
+        </div>
+        <div class="control">
+          <label class="checkbox-row"><input type="checkbox" id="multipathToggle"> Pokaż falę odbitą (multipath)</label>
+          <div style="margin-top:10px; opacity:0.6;" id="multipathControls">
+            <div class="control-head"><span class="name">Przesunięcie fazowe Θ</span><span class="val" id="phaseVal">180°</span></div>
+            <input type="range" id="phaseSlider" min="0" max="360" step="5" value="180">
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card" id="waveInfo">
+        Zwiększasz częstotliwość → w tym samym oknie czasu (1 s) mieści się więcej cykli → każdy cykl musi być krótszy → <b>λ maleje</b>. To dokładnie ten mechanizm decyduje, że pasmo <b>6 GHz</b> ma krótszą falę niż <b>2.4 GHz</b>: gorzej przenika przez ściany, ale ma więcej wolnego pasma i mniej zakłóceń.
+      </div>
+
+      <h3 class="mod-title" style="font-size:13px; margin-top:22px;"><span class="dot" style="background:var(--amber); box-shadow:0 0 6px var(--amber);"></span>Pasma UniFi — ten sam mechanizm, inna skala</h3>
+      <div class="band-grid" id="bandGrid"></div>
+    </section>
+
+    <!-- MODULE 2: SPECTRUM ANALYZER -->
+    <section class="module" id="tab-spectrum">
+      <h2 class="mod-title"><span class="dot" style="background:var(--cyan); box-shadow:0 0 6px var(--cyan);"></span>Analizator widma elektromagnetycznego</h2>
+      <p class="mod-desc">Radio, WiFi, światło widzialne i promieniowanie rentgenowskie to jedno zjawisko — różni je tylko długość fali. Przesuwaj kursor i patrz, jak λ zmienia się odwrotnie do f.</p>
+
+      <div class="spectrum-bar" id="spectrumBar"></div>
+      <div class="ion-label"><span>← NIEJONIZUJĄCE (bezpieczne dla komórek)</span><span>JONIZUJĄCE (może uszkadzać atomy) →</span></div>
+
+      <div class="controls" style="margin-top:18px;">
+        <div class="control" style="grid-column:1/-1;">
+          <div class="control-head"><span class="name">Częstotliwość f</span><span class="val" id="specFreqVal">2.40 GHz</span></div>
+          <input type="range" id="specSlider" min="3" max="20" step="0.01" value="9.38">
+        </div>
+      </div>
+
+      <div class="readout-row">
+        <div class="readout"><div class="label">Częstotliwość</div><div class="value cyan" id="specFreqReadout">2.40 GHz</div></div>
+        <div class="readout"><div class="label">Długość fali λ = c / f</div><div class="value" id="specLambdaReadout">12.5 cm</div></div>
+        <div class="readout"><div class="label">Strefa widma</div><div class="value amber" id="specZoneReadout">Microwave</div></div>
+        <div class="readout"><div class="label">Jonizujące?</div><div class="value" id="specIonReadout">NIE</div></div>
+      </div>
+
+      <div class="presetbar" id="presetBar"></div>
+
+      <div class="info-card" id="specInfo"></div>
+    </section>
+
+    <!-- MODULE 3: POWER METER -->
+    <section class="module" id="tab-power">
+      <h2 class="mod-title"><span class="dot" style="background:var(--amber); box-shadow:0 0 6px var(--amber);"></span>Miernik moc — skala dB / dBm</h2>
+      <p class="mod-desc">dBm to nie jednostka mocy — to stosunek do 1 mW, ściśnięty logarytmem. Reguła, którą musisz znać na pamięć: <b style="color:var(--amber)">+10 dB = ×10 mocy, +3 dB = ×2, -3 dB = ÷2, -10 dB = ÷10</b>.</p>
+
+      <div class="big-readout">
+        <div class="dbm" id="dbmBig">20 dBm</div>
+        <div class="arrow-eq">=</div>
+        <div class="mw" id="mwBig">100.0 mW</div>
+      </div>
+
+      <div class="gauge-wrap">
+        <div class="gauge-marks" id="gaugeMarks"></div>
+        <div class="gauge-track"></div>
+        <input type="range" id="dbmSlider" min="-90" max="90" step="1" value="20" style="margin-top:8px;">
+      </div>
+
+      <div class="delta-row">
+        <button class="delta-btn down" data-delta="-10">−10 dB (÷10)</button>
+        <button class="delta-btn down" data-delta="-3">−3 dB (÷2)</button>
+        <button class="delta-btn up" data-delta="3">+3 dB (×2)</button>
+        <button class="delta-btn up" data-delta="10">+10 dB (×10)</button>
+      </div>
+
+      <div class="info-card" id="powerInfo"></div>
+
+      <h3 class="mod-title" style="font-size:13px; margin-top:20px;"><span class="dot" style="background:var(--cyan); box-shadow:0 0 6px var(--cyan);"></span>Punkty odniesienia (kliknij, żeby ustawić)</h3>
+      <div class="ref-list" id="refList"></div>
+    </section>
+
+    <!-- MODULE 4: QUIZ -->
+    <section class="module" id="tab-quiz">
+      <h2 class="mod-title"><span class="dot" style="background:var(--danger); box-shadow:0 0 6px var(--danger);"></span>Misje: sprawdź się jako admin UniFi</h2>
+      <p class="mod-desc">Osiem pytań łączących fizykę fal z realnymi ustawieniami w UniFi Network. Odpowiadaj, czytaj wyjaśnienia — to jest ta sama wiedza, tylko przetestowana w praktyce.</p>
+
+      <div class="quiz-progress">
+        <span id="quizProgress">Pytanie 1 / 8</span>
+        <span class="quiz-score" id="quizScore">Wynik: 0 / 8</span>
+      </div>
+
+      <div class="quiz-card" id="quizCard"></div>
+    </section>
+
+  </main>
+  <div class="foot">RF LAB v1.0 — zbudowane na podstawie slajdów UWA RF Fundamentals</div>
+</div>
+
+<script>
+(function(){
+
+// ---------- TAB SWITCHING ----------
+const tabBtns = document.querySelectorAll('.tab-btn');
+const modules = document.querySelectorAll('.module');
+tabBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    tabBtns.forEach(b=>b.classList.remove('active'));
+    modules.forEach(m=>m.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- MODULE 1: WAVE ----------
+const canvas = document.getElementById('waveCanvas');
+const ctx = canvas.getContext('2d');
+const freqSlider = document.getElementById('freqSlider');
+const ampSlider = document.getElementById('ampSlider');
+const phaseSlider = document.getElementById('phaseSlider');
+const multipathToggle = document.getElementById('multipathToggle');
+const multipathControls = document.getElementById('multipathControls');
+
+function resizeCanvas(){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', resizeCanvas);
+
+let globalPhase = 0;
+
+function drawWave(){
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0,0,w,h);
+
+  // grid
+  ctx.strokeStyle = 'rgba(77,255,154,0.08)';
+  ctx.lineWidth = 1;
+  for(let x=0; x<=w; x+=w/10){
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+  }
+  for(let y=0; y<=h; y+=h/6){
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(77,255,154,0.18)';
+  ctx.beginPath(); ctx.moveTo(0,h/2); ctx.lineTo(w,h/2); ctx.stroke();
+
+  const f = parseFloat(freqSlider.value);
+  const A = parseFloat(ampSlider.value);
+  const showMulti = multipathToggle.checked;
+  const phaseB = parseFloat(phaseSlider.value) * Math.PI/180;
+  const midY = h/2;
+  const ampScale = h*0.36;
+
+  function waveY(t, amp, phaseOffset){
+    return Math.sin(2*Math.PI*f*t + globalPhase + phaseOffset);
+  }
+
+  if(showMulti){
+    // wave A dim
+    ctx.strokeStyle = 'rgba(77,255,154,0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for(let px=0; px<=w; px++){
+      const t = px/w;
+      const y = midY - waveY(t, A, 0)*A*ampScale;
+      px===0? ctx.moveTo(px,y) : ctx.lineTo(px,y);
+    }
+    ctx.stroke();
+
+    // wave B dim (amber)
+    ctx.strokeStyle = 'rgba(255,176,32,0.4)';
+    ctx.beginPath();
+    for(let px=0; px<=w; px++){
+      const t = px/w;
+      const y = midY - waveY(t, A, phaseB)*A*ampScale;
+      px===0? ctx.moveTo(px,y) : ctx.lineTo(px,y);
+    }
+    ctx.stroke();
+
+    // sum bright
+    ctx.strokeStyle = '#4dff9a';
+    ctx.lineWidth = 2.2;
+    ctx.shadowColor = '#4dff9a';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    let maxAbs = 0;
+    for(let px=0; px<=w; px++){
+      const t = px/w;
+      const sum = (waveY(t,A,0) + waveY(t,A,phaseB)) * A * ampScale;
+      if(Math.abs(sum) > maxAbs) maxAbs = Math.abs(sum);
+      const y = midY - sum;
+      px===0? ctx.moveTo(px,y) : ctx.lineTo(px,y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    const ratio = maxAbs / (A*ampScale*2);
+    const sumOut = document.getElementById('waveSumOut');
+    if(ratio > 0.85){ sumOut.textContent = 'WZMOCNIENIE'; sumOut.className='value cyan'; }
+    else if(ratio < 0.25){ sumOut.textContent = 'WYGASZENIE'; sumOut.className='value danger'; }
+    else { sumOut.textContent = 'CZĘŚCIOWE'; sumOut.className='value amber'; }
+  } else {
+    ctx.strokeStyle = '#4dff9a';
+    ctx.lineWidth = 2.2;
+    ctx.shadowColor = '#4dff9a';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    for(let px=0; px<=w; px++){
+      const t = px/w;
+      const y = midY - waveY(t,A,0)*A*ampScale;
+      px===0? ctx.moveTo(px,y) : ctx.lineTo(px,y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    document.getElementById('waveSumOut').textContent = '—';
+    document.getElementById('waveSumOut').className = 'value amber';
+  }
+}
+
+function updateWaveReadouts(){
+  const f = parseFloat(freqSlider.value);
+  document.getElementById('freqVal').textContent = f.toFixed(1)+' Hz';
+  document.getElementById('waveFreqOut').textContent = f.toFixed(1)+' Hz';
+  const lambda = 1/f;
+  document.getElementById('waveLambdaOut').textContent = lambda.toFixed(2)+' (jedn. wzgl.)';
+  document.getElementById('ampVal').textContent = parseFloat(ampSlider.value).toFixed(2);
+  document.getElementById('phaseVal').textContent = phaseSlider.value+'°';
+
+  const info = document.getElementById('waveInfo');
+  if(multipathToggle.checked){
+    const ph = parseFloat(phaseSlider.value);
+    let msg = '';
+    if(ph < 30 || ph > 330){
+      msg = '<b>Fazy zgodne (Θ≈0°)</b> — obie fale klaszczą razem: sygnał się <b>wzmacnia</b>. To najlepszy scenariusz odbicia.';
+    } else if(ph > 150 && ph < 210){
+      msg = '<b>Przeciwfaza (Θ≈180°)</b> — fale klaszczą "na przemian": sygnały się <b>znoszą</b>. Tak wygląda martwa strefa WiFi powstała przez multipath fading.';
+    } else {
+      msg = 'Częściowe przesunięcie fazowe — sygnał ani się w pełni wzmacnia, ani gasi. W realnym pomieszczeniu odbicia od ścian tworzą właśnie takie miksy faz w różnych punktach — to dlaczego siła sygnału bywa nierówna mimo tej samej odległości od AP.';
+    }
+    info.innerHTML = msg;
+  } else {
+    info.innerHTML = 'Zwiększasz częstotliwość → w tym samym oknie czasu (1 s) mieści się więcej cykli → każdy cykl musi być krótszy → <b>λ maleje</b>. To dokładnie ten mechanizm decyduje, że pasmo <b>6 GHz</b> ma krótszą falę niż <b>2.4 GHz</b>: gorzej przenika przez ściany, ale ma więcej wolnego pasma i mniej zakłóceń.';
+  }
+}
+
+[freqSlider, ampSlider, phaseSlider].forEach(el=>el.addEventListener('input', updateWaveReadouts));
+multipathToggle.addEventListener('change', ()=>{
+  multipathControls.style.opacity = multipathToggle.checked ? '1' : '0.4';
+  updateWaveReadouts();
+});
+
+function animate(){
+  globalPhase += 0.012;
+  drawWave();
+  requestAnimationFrame(animate);
+}
+resizeCanvas();
+updateWaveReadouts();
+animate();
+
+// band cards
+const bands = [
+  {name:'2.4 GHz', freq:2.4, range:95, bw:20, note:'Najlepszy zasięg, ale zatłoczone (Bluetooth, mikrofalówki)'},
+  {name:'5 GHz', freq:5, range:60, bw:60, note:'Kompromis: dobry zasięg i sporo wolnego pasma'},
+  {name:'6 GHz', freq:6, range:35, bw:100, note:'Najmniejszy zasięg, ale najczystsze i najszersze pasmo'}
+];
+const bandGrid = document.getElementById('bandGrid');
+bands.forEach((b,i)=>{
+  const div = document.createElement('div');
+  div.className = 'band-card' + (i===0?' active':'');
+  div.innerHTML = `<div class="bfreq">${b.name}</div><div class="bname">${b.note}</div>
+    <div class="blabel">Względny zasięg</div><div class="bbar"><i style="width:${b.range}%"></i></div>
+    <div class="blabel">Dostępne pasmo</div><div class="bbar"><i style="width:${b.bw}%; background:var(--amber);"></i></div>`;
+  div.addEventListener('click', ()=>{
+    document.querySelectorAll('.band-card').forEach(c=>c.classList.remove('active'));
+    div.classList.add('active');
+  });
+  bandGrid.appendChild(div);
+});
+
+// ---------- MODULE 2: SPECTRUM ----------
+const zones = [
+  {name:'Radio', from:3, to:9, color:'#3a6b52'},
+  {name:'Microwave', from:9, to:11.48, color:'#2f8f6f'},
+  {name:'Infrared', from:11.48, to:14.6, color:'#a33d1f'},
+  {name:'Visible', from:14.6, to:14.88, color:'#8b3fa3'},
+  {name:'UV', from:14.88, to:16.5, color:'#5d3aa8'},
+  {name:'X-Rays', from:16.5, to:19.5, color:'#3a4a9e'},
+  {name:'Gamma', from:19.5, to:20, color:'#2a2f6b'}
+];
+const IONIZING_START = 14.88;
+const TOTAL_MIN=3, TOTAL_MAX=20;
+
+const spectrumBar = document.getElementById('spectrumBar');
+zones.forEach(z=>{
+  const pct = (z.to - z.from) / (TOTAL_MAX-TOTAL_MIN) * 100;
+  const div = document.createElement('div');
+  div.className = 'zone';
+  div.style.width = pct+'%';
+  div.style.background = z.color;
+  div.textContent = z.name;
+  spectrumBar.appendChild(div);
+});
+const cursor = document.createElement('div');
+cursor.className = 'spectrum-cursor';
+spectrumBar.appendChild(cursor);
+const ionLine = document.createElement('div');
+ionLine.className = 'ion-divider';
+ionLine.style.left = ((IONIZING_START-TOTAL_MIN)/(TOTAL_MAX-TOTAL_MIN)*100)+'%';
+spectrumBar.appendChild(ionLine);
+
+function fmtFreq(hz){
+  if(hz>=1e12) return (hz/1e12).toFixed(2)+' THz';
+  if(hz>=1e9) return (hz/1e9).toFixed(2)+' GHz';
+  if(hz>=1e6) return (hz/1e6).toFixed(2)+' MHz';
+  if(hz>=1e3) return (hz/1e3).toFixed(2)+' kHz';
+  return hz.toFixed(0)+' Hz';
+}
+function fmtLen(m){
+  if(m>=1000) return (m/1000).toFixed(2)+' km';
+  if(m>=1) return m.toFixed(2)+' m';
+  if(m>=0.001) return (m*1000).toFixed(2)+' mm';
+  if(m>=1e-6) return (m*1e6).toFixed(2)+' µm';
+  if(m>=1e-9) return (m*1e9).toFixed(2)+' nm';
+  return (m*1e12).toFixed(2)+' pm';
+}
+function zoneOf(exp){
+  for(const z of zones) if(exp>=z.from && exp<=z.to) return z.name;
+  return '—';
+}
+
+const specSlider = document.getElementById('specSlider');
+function updateSpectrum(){
+  const exp = parseFloat(specSlider.value);
+  const f = Math.pow(10, exp);
+  const lambda = 3e8/f;
+  document.getElementById('specFreqVal').textContent = fmtFreq(f);
+  document.getElementById('specFreqReadout').textContent = fmtFreq(f);
+  document.getElementById('specLambdaReadout').textContent = fmtLen(lambda);
+  const zn = zoneOf(exp);
+  document.getElementById('specZoneReadout').textContent = zn;
+  const ionizing = exp >= IONIZING_START;
+  const ionOut = document.getElementById('specIonReadout');
+  ionOut.textContent = ionizing ? 'TAK' : 'NIE';
+  ionOut.className = 'value ' + (ionizing ? 'danger':'');
+  const pct = (exp-TOTAL_MIN)/(TOTAL_MAX-TOTAL_MIN)*100;
+  cursor.style.left = pct+'%';
+
+  const info = document.getElementById('specInfo');
+  const isWifiRange = f >= 2.3e9 && f <= 6.5e9;
+  if(isWifiRange){
+    info.className = 'info-card';
+    info.innerHTML = 'To jest właśnie zakres, w którym pracują Twoje AP UniFi. Krótsza fala (bliżej 6 GHz) — mniejszy zasięg, ale więcej wolnego pasma i mniej zakłóceń. Dłuższa fala (bliżej 2.4 GHz) — lepiej przenika przez ściany, ale pasmo jest zatłoczone.';
+  } else if(ionizing){
+    info.className = 'info-card danger';
+    info.innerHTML = '<b>Strefa jonizująca.</b> Energia fali jest tu na tyle duża, że może wyrywać elektrony z atomów — dlatego np. prześwietlenie rentgenowskie robi się rzadko i z osłoną. WiFi nigdy nie sięga tak wysokiej częstotliwości.';
+  } else {
+    info.className = 'info-card';
+    info.innerHTML = 'Strefa niejonizująca — energia fali jest zbyt niska, by uszkadzać strukturę atomową. Twój router WiFi (i całe pasmo Microwave) leży głęboko w tej bezpiecznej strefie.';
+  }
+}
+specSlider.addEventListener('input', updateSpectrum);
+updateSpectrum();
+
+const presets = [
+  {label:'WiFi 2.4 GHz', exp: Math.log10(2.4e9)},
+  {label:'WiFi 5 GHz', exp: Math.log10(5e9)},
+  {label:'WiFi 6 GHz', exp: Math.log10(6e9)},
+  {label:'Kuchenka mikrofalowa', exp: Math.log10(2.45e9)},
+  {label:'Pilot IR', exp: Math.log10(3.5e14)},
+  {label:'Światło widzialne', exp: Math.log10(5.5e14)},
+  {label:'Prześwietlenie RTG', exp: Math.log10(3e18)}
+];
+const presetBar = document.getElementById('presetBar');
+presets.forEach(p=>{
+  const btn = document.createElement('button');
+  btn.className = 'preset';
+  btn.textContent = p.label;
+  btn.addEventListener('click', ()=>{
+    specSlider.value = p.exp.toFixed(2);
+    updateSpectrum();
+  });
+  presetBar.appendChild(btn);
+});
+
+// ---------- MODULE 3: POWER ----------
+const dbmSlider = document.getElementById('dbmSlider');
+function mwFromDbm(dbm){ return Math.pow(10, dbm/10); }
+function fmtPower(dbm){
+  const mw = mwFromDbm(dbm);
+  const w = mw/1000;
+  const units = [['kW',1e3],['W',1],['mW',1e-3],['µW',1e-6],['nW',1e-9],['pW',1e-12]];
+  for(const [name,scale] of units){
+    if(w >= scale) return (w/scale).toFixed((w/scale)<10?2:1)+' '+name;
+  }
+  return w.toExponential(2)+' W';
+}
+function updatePower(){
+  const dbm = parseFloat(dbmSlider.value);
+  document.getElementById('dbmBig').textContent = dbm.toFixed(0)+' dBm';
+  document.getElementById('mwBig').textContent = fmtPower(dbm);
+  const pct = (dbm - (-90)) / (90 - (-90)) * 100;
+  document.getElementById('gaugeCursorEl').style.left = pct+'%';
+
+  const info = document.getElementById('powerInfo');
+  let msg;
+  if(dbm <= -80) msg = 'Sygnał na granicy odbioru — ekstremalnie słaby ułamek miliwata. Klient prawdopodobnie się rozłączy albo połączy na najniższej możliwej prędkości.';
+  else if(dbm <= -67) msg = 'Sygnał wciąż użytkowy, ale już wyraźnie osłabiony przez odległość i przeszkody. Typowa granica "jeszcze dobrego" połączenia WiFi.';
+  else if(dbm <= -30) msg = 'Dobry, silny sygnał klienta — komfortowa strefa pracy dla większości urządzeń.';
+  else if(dbm <= 30) msg = 'To zakres typowej mocy nadawania access pointa (np. 20 dBm = 100 mW). Każdy "równy" krok w dB to skok geometryczny, nie liniowy, w rzeczywistej mocy.';
+  else msg = 'To poziom mocy nadajników komercyjnych (FM/AM), znacznie powyżej tego, na czym pracuje access point WiFi.';
+  info.innerHTML = msg;
+}
+dbmSlider.addEventListener('input', updatePower);
+
+document.querySelectorAll('.delta-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const delta = parseFloat(btn.dataset.delta);
+    let v = parseFloat(dbmSlider.value) + delta;
+    v = Math.max(-90, Math.min(90, v));
+    dbmSlider.value = v;
+    updatePower();
+  });
+});
+
+const gaugeMarks = document.getElementById('gaugeMarks');
+const gaugeCursorEl = document.createElement('div');
+gaugeCursorEl.className = 'gauge-cursor';
+gaugeCursorEl.id = 'gaugeCursorEl';
+gaugeMarks.appendChild(gaugeCursorEl);
+[-90,-60,-30,0,30,60,90].forEach(v=>{
+  const pct = (v-(-90))/180*100;
+  const m = document.createElement('div');
+  m.className = 'gauge-mark';
+  m.style.left = pct+'%';
+  m.innerHTML = `<span class="mlabel">${v}</span>`;
+  gaugeMarks.appendChild(m);
+});
+
+const refs = [
+  {name:'Czuły odbiornik (granica wykrywalności)', dbm:-90},
+  {name:'Słaby sygnał klienta WiFi', dbm:-85},
+  {name:'Dobry sygnał klienta WiFi', dbm:-67},
+  {name:'Typowy AP UniFi', dbm:20},
+  {name:'Nadajnik FM', dbm:72},
+  {name:'Nadajnik AM', dbm:77}
+];
+const refList = document.getElementById('refList');
+refs.forEach(r=>{
+  const div = document.createElement('div');
+  div.className = 'ref-item';
+  div.innerHTML = `<span class="rname">${r.name}</span><span class="rval">${r.dbm} dBm · ${fmtPower(r.dbm)}</span>`;
+  div.addEventListener('click', ()=>{ dbmSlider.value = r.dbm; updatePower(); });
+  refList.appendChild(div);
+});
+updatePower();
+
+// ---------- MODULE 4: QUIZ ----------
+const questions = [
+  {
+    q: 'Zwiększasz częstotliwość fali radiowej, nie zmieniając niczego innego. Co dzieje się z jej długością (λ)?',
+    opts: ['Rośnie', 'Maleje', 'Nie zmienia się', 'Zależy od amplitudy'],
+    correct: 1,
+    explain: 'Prędkość światła c jest stała, więc f i λ są odwrotnie proporcjonalne (f = c/λ). Więcej cykli w tej samej sekundzie oznacza, że każdy cykl musi być krótszy.'
+  },
+  {
+    q: 'AP UniFi nadaje na 5 GHz w jednym pomieszczeniu i na 2.4 GHz w drugim, przy tej samej odległości od ściany. Które pasmo lepiej przeniknie przez przeszkodę?',
+    opts: ['5 GHz — krótsza fala łatwiej przenika', '2.4 GHz — dłuższa fala lepiej penetruje przeszkody', 'Oba identycznie', 'Zależy tylko od mocy TX'],
+    correct: 1,
+    explain: 'Dłuższa fala (2.4 GHz) ma większą zdolność „obchodzenia” przeszkód niż krótsza fala 5 GHz czy 6 GHz — to konsekwencja fizyki, nie decyzja producenta.'
+  },
+  {
+    q: 'Dlaczego pasmo 6 GHz jest zwykle „czystsze” (mniej zakłóceń) niż 2.4 GHz?',
+    opts: ['Bo jest nowsze technologicznie', 'Bo ma mniej dostępnego pasma', 'Bo mniej urządzeń (Bluetooth, mikrofalówki) tam nadaje, a dostępnego pasma jest więcej', 'Bo fale 6 GHz nie odbijają się od ścian'],
+    correct: 2,
+    explain: '2.4 GHz współdzielą Bluetooth, kuchenki mikrofalowe i telefony bezprzewodowe. 6 GHz to relatywnie „pusta” przestrzeń z dużą ilością wolnego pasma.'
+  },
+  {
+    q: 'Czy sygnał WiFi (2.4/5/6 GHz) należy do promieniowania jonizującego?',
+    opts: ['Tak, tak jak promienie X', 'Nie — leży głęboko w strefie niejonizującej', 'Tylko przy pełnej mocy TX', 'Tylko pasmo 6 GHz jest jonizujące'],
+    correct: 1,
+    explain: 'Energia fal WiFi jest fizycznie zbyt niska, żeby wyrywać elektrony z atomów. Strefa jonizująca zaczyna się dopiero w okolicach UV, znacznie wyżej na skali częstotliwości.'
+  },
+  {
+    q: 'Zwiększasz moc nadawania AP o +10 dB. Ile razy wzrasta rzeczywista moc w miliwatach?',
+    opts: ['2 razy', 'Nie zmienia się', '10 razy', '100 razy'],
+    correct: 2,
+    explain: '+10 dB to zawsze ×10 mocy w watach/miliwatach — to jest właśnie „Rule of 3’s & 10’s”: +3dB=×2, +10dB=×10.'
+  },
+  {
+    q: 'AP nadaje na 20 dBm (100 mW). Zmniejszasz moc o 3 dB. Jaka jest teraz moc w miliwatach?',
+    opts: ['10 mW', '50 mW', '90 mW', '33 mW'],
+    correct: 1,
+    explain: '-3 dB to zawsze ÷2 mocy. 100 mW ÷ 2 = 50 mW (czyli 17 dBm).'
+  },
+  {
+    q: 'Klient WiFi ma RSSI −85 dBm w UniFi Network. Co to praktycznie oznacza?',
+    opts: ['Bardzo silny, komfortowy sygnał', 'Sygnał na granicy odbioru — warto sprawdzić pokrycie w tym miejscu', 'AP nadaje z maksymalną mocą', 'To błąd odczytu, dBm nie może być ujemne'],
+    correct: 1,
+    explain: 'Minus w dBm nie oznacza mocy ujemnej — oznacza ułamek miliwata (poniżej punktu odniesienia 1 mW). −85 dBm to bardzo słaby, prawie niewykrywalny sygnał.'
+  },
+  {
+    q: 'Sygnał WiFi odbija się od dwóch ścian i dociera do laptopa dwiema drogami, dokładnie w przeciwfazie (Θ=180°). Co się dzieje?',
+    opts: ['Sygnały się wzmacniają', 'Sygnały się częściowo lub całkowicie znoszą — możliwa martwa strefa', 'Częstotliwość się zmienia', 'Nic — faza nie ma wpływu na siłę sygnału'],
+    correct: 1,
+    explain: 'To jest multipath fading: fale w przeciwfazie znoszą się nawzajem, tak jak dwie osoby klaszczące dokładnie między klaśnięciami drugiej — stąd nielogicznie umiejscowione martwe strefy WiFi.'
+  }
+];
+
+let currentQ = 0;
+let score = 0;
+let answered = false;
+
+function renderQuiz(){
+  document.getElementById('quizProgress').textContent = `Pytanie ${currentQ+1} / ${questions.length}`;
+  document.getElementById('quizScore').textContent = `Wynik: ${score} / ${questions.length}`;
+  const card = document.getElementById('quizCard');
+
+  if(currentQ >= questions.length){
+    card.innerHTML = `<div class="quiz-done">
+      <div class="score-big">${score} / ${questions.length}</div>
+      <p style="color:var(--text-dim); margin-top:8px;">${score>=6 ? 'Solidna znajomość fundamentów RF — gotowy na kontroler UniFi.' : 'Warto wrócić do modułów 01–03 i przećwiczyć jeszcze raz.'}</p>
+      <button class="quiz-restart" id="restartBtn">Zacznij misje od nowa</button>
+    </div>`;
+    document.getElementById('restartBtn').addEventListener('click', ()=>{
+      currentQ = 0; score = 0; answered = false; renderQuiz();
+    });
+    return;
+  }
+
+  const item = questions[currentQ];
+  answered = false;
+  card.innerHTML = `
+    <p class="quiz-q">${item.q}</p>
+    <div class="quiz-opts" id="quizOpts"></div>
+    <div class="quiz-explain" id="quizExplain">${item.explain}</div>
+    <button class="quiz-next" id="quizNextBtn">${currentQ === questions.length-1 ? 'Zobacz wynik →' : 'Następne pytanie →'}</button>
+  `;
+  const optsWrap = document.getElementById('quizOpts');
+  item.opts.forEach((opt, idx)=>{
+    const b = document.createElement('button');
+    b.className = 'quiz-opt';
+    b.textContent = opt;
+    b.addEventListener('click', ()=>{
+      if(answered) return;
+      answered = true;
+      const buttons = optsWrap.querySelectorAll('.quiz-opt');
+      buttons.forEach(bt=>bt.disabled = true);
+      if(idx === item.correct){
+        b.classList.add('correct');
+        score++;
+      } else {
+        b.classList.add('wrong');
+        buttons[item.correct].classList.add('correct');
+      }
+      document.getElementById('quizExplain').classList.add('show');
+      document.getElementById('quizNextBtn').classList.add('show');
+      document.getElementById('quizScore').textContent = `Wynik: ${score} / ${questions.length}`;
+    });
+    optsWrap.appendChild(b);
+  });
+  document.getElementById('quizNextBtn').addEventListener('click', ()=>{
+    currentQ++;
+    renderQuiz();
+  });
+}
+renderQuiz();
+
+})();
+</script>
+</body>
+</html>
